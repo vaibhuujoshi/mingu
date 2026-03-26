@@ -62,4 +62,12 @@ async function getMessages(senderId, roomId) {
     return content;
 }
 
-export { createRoom, sendMessage, getMessages };
+async function getRooms(userId) {
+    const rooms = await ChatRoomModel.find({
+        participants: userId
+    })
+
+    return rooms;
+}
+
+export { createRoom, sendMessage, getMessages, getRooms };
