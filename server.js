@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import userRoutes from "./routes/userRoutes.js";
+import roomRoutes from "./routes/chatRoomRoutes.js"
 import mongoose from "mongoose";
 
 dotenv.config();
@@ -19,6 +20,7 @@ mongoose.connect(MongoDB_URL)
     });
 
 app.use("/api/user", userRoutes);
+app.use("/api/chat", roomRoutes);
 
 app.listen(3000, () => {
     console.log("Server running on http://localhost:3000");
