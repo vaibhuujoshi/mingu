@@ -1,4 +1,4 @@
-import { createRoom, sendMessage, getMessages } from "../services/chatRoomService.js";
+import { createRoom, sendMessage, getMessages, getRooms } from "../services/chatRoomService.js";
 import { objectIdSchema, createRoomSchema, messageSchema } from "../validators/chatRoomValidator.js";
 
 async function createRoomHandler(req, res) {
@@ -39,15 +39,15 @@ async function sendMessageHandler(req, res) {
         const roomId = req.params.roomId;
         const message = req.body.message;
 
-        const parsed = messageSchema.safeParse(message);
+        // const parsed = messageSchema.safeParse(message);
 
-        if (!parsed.success) {
-            return res.status(400).json({
-                message: "Invalid Format"
-            })
-        }
+        // if (!parsed.success) {
+        //     return res.status(400).json({
+        //         message: "Invalid Format"
+        //     })
+        // }
 
-        await sendMessage(senderId, roomId, parsed.data);
+        await sendMessage(senderId, roomId, message);
 
         res.status(200).json({
             message: "Message sent successfully",
@@ -99,4 +99,17 @@ async function getMessagesHandler(req, res) {
     }
 }
 
-export { createRoomHandler, sendMessageHandler, getMessagesHandler };
+async function getRoomsHandler(req, res) {
+    try {
+        const userId = req.user.id;
+        const rooms = await getRooms(userId);
+
+        res.status(200).json({
+            rooms
+        })
+    } catch (err) {
+        
+    }
+}
+
+export { createRoomHandler, sendMessageHandler, getMessagesHandler, getRoomsHandler };
