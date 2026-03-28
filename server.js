@@ -43,7 +43,19 @@ io.on("connection", async (socket) => {
 
         socket.user = decoded;
 
-        console.log("User connected: ", socket.user.id);
+        const userId = socket.user.id;
+
+        console.log("User connected: ", userId);
+
+        const rooms = await ChatRoomModel.find({
+            participants: userId
+        })
+
+        rooms.forEach((room) => {
+            socket.join(room._id.toString())
+        });
+
+        console.log(`User joined ${rooms.length} rooms`);
 
         socket.on("disconnect", () => {
             console.log("User disconnected:", socket.user?.id);
