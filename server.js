@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
+import ChatRoomModel from "./models/chatRoom.js";
 
 dotenv.config();
 
@@ -28,12 +29,29 @@ app.use("/api/chat", roomRoutes);
 const server = http.createServer(app);
 const io = new Server(server);
 
-io.on("connection", (socket) => {
-    console.log("User connected: ", socket.id);
+io.on("connection", async (socket) => {
+    try {
+        const token = socket.handshake.auth?.token;
 
-    socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
-    });
+        if (!token) {
+            console.log("No token Provided");
+            socket.disconnect();
+            return;
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        socket.user = decoded;
+
+        console.log("User connected: ", socket.user.id);
+
+        socket.on("disconnect", () => {
+            console.log("User disconnected:", socket.user?.id);
+        });
+    } catch (err) {
+        console.log("Invalid Token");
+        socket.disconnect();
+    }
 })
 
 server.listen(3000, () => {
