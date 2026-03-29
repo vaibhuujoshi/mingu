@@ -8,7 +8,7 @@ import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
 import ChatRoomModel from "./models/chatRoom.js";
-import { sendMessage } from "./services/chatRoomService.js";
+import { sendMessage, lastMessage } from "./services/chatRoomService.js";
 
 dotenv.config();
 
@@ -63,10 +63,27 @@ io.on("connection", async (socket) => {
             socket.join(room._id.toString());
         });
 
+        socket.emit("ready");
+
         console.log(`User joined ${rooms.length} rooms`);
     } catch (err) {
         console.log("Room fetch error:", err.message);
     }
+
+    socket.on("sync_messages", async (data) => {
+        console.log("📨 Last entry: ")
+
+        try {
+            const { roomId } = data;
+
+            const lastEntry = await lastMessage(userId, roomId);
+
+            socket.emit("sync_messages", lastEntry);
+        } catch (err) {
+            console.log("Error getting message:", err.message);
+            socket.emit("error_message", err.message);
+        }
+    })
 
     socket.on("send_message", async (data) => {
         console.log("📨 send_message event received");
