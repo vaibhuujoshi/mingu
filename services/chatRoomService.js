@@ -62,6 +62,26 @@ async function getMessages(senderId, roomId) {
     return content;
 }
 
+async function lastMessage(userId, roomId) {
+    const roomExist = await ChatRoomModel.findById(roomId);
+
+    if (!roomExist) {
+        throw new Error("ROOM_NOT_FOUND");
+    }
+
+    if (!roomExist.participants.some(
+        (id) => id.toString() === userId.toString()
+    )) {
+        throw new Error("NOT_A_PARTICIPANT");
+    }
+
+    const content = await MessageModel.findOne({
+        roomId
+    }).sort({ createdAt: -1 })
+
+    return content;
+}
+
 async function getRooms(userId) {
     const rooms = await ChatRoomModel.find({
         participants: userId
@@ -70,4 +90,4 @@ async function getRooms(userId) {
     return rooms;
 }
 
-export { createRoom, sendMessage, getMessages, getRooms };
+export { createRoom, sendMessage, getMessages, getRooms, lastMessage };
