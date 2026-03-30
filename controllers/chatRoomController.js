@@ -76,11 +76,11 @@ async function getMessagesHandler(req, res) {
         const senderId = req.user.id;
         const roomId = req.params.roomId;
 
-        const content = await getMessages(senderId, roomId);
+        const {cursor, limit = 20} = req.query;
 
-        res.status(200).json({
-            messages: [content]
-        });
+        const content = await getMessages(senderId, roomId, cursor ,parseInt(limit));
+
+        res.status(200).json(content);
 
     } catch (err) {
         if (err.message === "ROOM_NOT_FOUND") {

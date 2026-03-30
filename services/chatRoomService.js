@@ -1,6 +1,5 @@
 import ChatRoomModel from "../models/chatRoom.js";
 import MessageModel from "../models/message.js";
-import UserModel from "../models/user.js";
 
 async function createRoom(creatorId, data) {
 
@@ -42,7 +41,7 @@ async function sendMessage(senderId, roomId, message) {
     return content;
 }
 
-async function getMessages(senderId, roomId) {
+async function getMessages(senderId, roomId, cursor, limit) {
     const roomExist = await ChatRoomModel.findById(roomId);
 
     if (!roomExist) {
@@ -55,11 +54,23 @@ async function getMessages(senderId, roomId) {
         throw new Error("NOT_A_PARTICIPANT");
     }
 
-    const content = await MessageModel.find({
-        roomId
-    }).sort({ createdAt: 1 })
+    const query = { roomId };
 
-    return content;
+    if (cursor) {
+        query._id = { $lt: cursor };
+    }
+
+    const messages = await MessageModel.find(query)
+        .sort({ createdAt: -1 })
+        .limit(limit);
+
+    const nextCursor = messages.length > 0
+        ? messages[messages.length - 1].id : null;
+
+    return {
+        messages: messages.reverse(),
+        nextCursor
+    };
 }
 
 async function lastMessage(userId, roomId) {
