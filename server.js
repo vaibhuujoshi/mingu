@@ -52,7 +52,11 @@ io.on("connection", async (socket) => {
     socket.user = decoded;
     const userId = socket.user.id;
 
-    console.log("User connected:", userId);
+    console.log({
+        event: "USER_CONNECTED",
+        userId,
+        time: new Date().toISOString()
+    });
 
     try {
         const rooms = await ChatRoomModel.find({
@@ -66,13 +70,12 @@ io.on("connection", async (socket) => {
         socket.emit("ready");
 
         console.log(`User joined ${rooms.length} rooms`);
+        console.log("Rooms Joined: ", rooms.map(r => r._id.toString()));
     } catch (err) {
         console.log("Room fetch error:", err.message);
     }
 
     socket.on("sync_messages", async (data) => {
-        console.log("📨 Last entry: ")
-
         try {
             const { roomId } = data;
 
@@ -91,13 +94,23 @@ io.on("connection", async (socket) => {
         try {
             const { roomId, message } = data;
 
+            if (!roomId || !message || message.trim().length === 0) {
+                socket.emit("error_message", "Invalid message");
+                return;
+            }
+
             const savedMessage = await sendMessage(
                 userId,
                 roomId,
                 message
             );
 
-            console.log("✅ Message saved");
+            console.log({
+                event: "SEND_MESSAGE",
+                userId,
+                roomId,
+                message
+            });
 
             io.to(roomId).emit("receive_message", savedMessage);
 
