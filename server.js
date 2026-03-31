@@ -8,6 +8,7 @@ import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
 import ChatRoomModel from "./models/chatRoom.js";
+import MessageModel from "./models/message.js";
 import { sendMessage, lastMessage } from "./services/chatRoomService.js";
 
 dotenv.config();
@@ -65,22 +66,19 @@ io.on("connection", async (socket) => {
         time: new Date().toISOString()
     });
 
-    try {
-        const rooms = await ChatRoomModel.find({
-            participants: userId
-        });
 
-        rooms.forEach((room) => {
-            socket.join(room._id.toString());
-        });
+    const rooms = await ChatRoomModel.find({
+        participants: userId
+    });
 
-        socket.emit("ready");
+    rooms.forEach((room) => {
+        socket.join(room._id.toString());
+    });
 
-        console.log(`User joined ${rooms.length} rooms`);
-        console.log("Rooms Joined: ", rooms.map(r => r._id.toString()));
-    } catch (err) {
-        console.log("Room fetch error:", err.message);
-    }
+    socket.emit("ready");
+
+    console.log(`User joined ${rooms.length} rooms`);
+    console.log("Rooms Joined: ", rooms.map(r => r._id.toString()));
 
     socket.on("sync_messages", async (data) => {
         try {
@@ -101,16 +99,20 @@ io.on("connection", async (socket) => {
         try {
             const { roomId, message } = data;
 
-            if (!roomId || !message || message.trim().length === 0) {
-                socket.emit("error_message", "Invalid message");
+            const roomExist = await ChatRoomModel.findById(roomId);
+
+            if (!roomExist) {
+                socket.emit("error_message", "ROOM_NOT_FOUND");
                 return;
             }
 
-            const savedMessage = await sendMessage(
-                userId,
+            const savedMessage = await MessageModel.create({
+                senderId: userId,
                 roomId,
-                message
-            );
+                message,
+                deliveredTo: [userId],
+                readBy: []
+            })
 
             console.log({
                 event: "SEND_MESSAGE",
@@ -122,8 +124,9 @@ io.on("connection", async (socket) => {
             const messageId = savedMessage._id;
 
             socket.to(roomId).emit("receive_message", savedMessage);
+
             io.to(roomId).emit("message_delivered", {
-                messageId: savedMessage._id
+                messageId
             })
 
         } catch (err) {
@@ -132,30 +135,40 @@ io.on("connection", async (socket) => {
         }
     });
 
-    socket.on("read_message", (data) => {
+    socket.on("read_message", async (data) => {
         const { messageId, roomId } = data;
+
+        try {
+            await MessageModel.findByIdAndUpdate(
+                messageId,
+                { $addToSet: { readBy: userId } }
+            )
+        } catch (err) {
+            console.error("READ ERROR:", err.message);
+        }
+
         socket.to(roomId).emit("message_read", { messageId, userId });
     })
 
-    socket.on("message_delivered", (data) => {
+    socket.on("message_delivered", async (data) => {
         const { messageId, roomId } = data;
-        socket.to(roomId).emit("message_delivered", { messageId, userId });
+
+        try {
+            await MessageModel.findByIdAndUpdate(
+                messageId,
+                { $addToSet: { deliveredTo: userId } }
+            )
+
+        } catch (err) {
+            console.error("DELIVERY ERROR:", err.message);
+        }
     })
 
     socket.on("typing", async (data) => {
         const { roomId } = data;
 
-        const roomExist = await ChatRoomModel.findById(roomId);
-
-        if (!roomExist) {
+        if (!roomId) {
             socket.emit("error_message", "ROOM_NOT_FOUND");
-            return;
-        }
-
-        if (!roomExist.participants.some(
-            (id) => id.toString() === userId.toString()
-        )) {
-            socket.emit("error_message", "USER_NOT_FOUND");
             return;
         }
 
@@ -167,17 +180,8 @@ io.on("connection", async (socket) => {
     socket.on("stop_typing", async (data) => {
         const { roomId } = data;
 
-        const roomExist = await ChatRoomModel.findById(roomId);
-
-        if (!roomExist) {
+        if (!roomId) {
             socket.emit("error_message", "ROOM_NOT_FOUND");
-            return;
-        }
-
-        if (!roomExist.participants.some(
-            (id) => id.toString() === userId.toString()
-        )) {
-            socket.emit("error_message", "USER_NOT_FOUND");
             return;
         }
 
