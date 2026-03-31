@@ -112,12 +112,28 @@ io.on("connection", async (socket) => {
                 message
             });
 
-            io.to(roomId).emit("receive_message", savedMessage);
+            socket.to(roomId).emit("receive_message", savedMessage);
 
         } catch (err) {
             console.log("Error sending message:", err.message);
             socket.emit("error_message", err.message);
         }
+    });
+
+    socket.on("typing", (data) => {
+        const { roomId } = data;
+
+        socket.to(roomId).emit("typing", {
+            userId
+        });
+    });
+
+    socket.on("stop_typing", (data) => {
+        const { roomId } = data;
+
+        socket.to(roomId).emit("stop_typing", {
+            userId
+        });
     });
 
     socket.on("disconnect", () => {
