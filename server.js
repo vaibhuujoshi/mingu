@@ -30,6 +30,8 @@ app.use("/api/chat", roomRoutes);
 const server = http.createServer(app);
 const io = new Server(server);
 
+const onlineUsers = new Map();
+
 io.on("connection", async (socket) => {
     const token = socket.handshake.auth?.token;
 
@@ -51,6 +53,10 @@ io.on("connection", async (socket) => {
 
     socket.user = decoded;
     const userId = socket.user.id;
+
+    onlineUsers.set(userId, socket.id);
+
+    socket.broadcast.emit("user_online", userId);
 
     console.log({
         event: "USER_CONNECTED",
@@ -120,16 +126,40 @@ io.on("connection", async (socket) => {
         }
     });
 
-    socket.on("typing", (data) => {
+    socket.on("typing", async (data) => {
         const { roomId } = data;
+
+        const roomExist = await ChatRoomModel.findById(roomId);
+
+        if (!roomExist) {
+            throw new Error("ROOM_NOT_FOUND");
+        }
+
+        if (!roomExist.participants.some(
+            (id) => id.toString() === senderId.toString()
+        )) {
+            throw new Error("NOT_A_PARTICIPANT");
+        }
 
         socket.to(roomId).emit("typing", {
             userId
         });
     });
 
-    socket.on("stop_typing", (data) => {
+    socket.on("stop_typing", async (data) => {
         const { roomId } = data;
+
+        const roomExist = await ChatRoomModel.findById(roomId);
+
+        if (!roomExist) {
+            throw new Error("ROOM_NOT_FOUND");
+        }
+
+        if (!roomExist.participants.some(
+            (id) => id.toString() === senderId.toString()
+        )) {
+            throw new Error("NOT_A_PARTICIPANT");
+        }
 
         socket.to(roomId).emit("stop_typing", {
             userId
@@ -137,6 +167,10 @@ io.on("connection", async (socket) => {
     });
 
     socket.on("disconnect", () => {
+        onlineUsers.delete(userId);
+
+        socket.broadcast.emit("user_offline", userId);
+
         console.log("User disconnected:", socket.user?.id);
     });
 });
