@@ -16,7 +16,15 @@ const MessageSchema = new Schema({
     message: {
         type: String,
         required: true
-    }
+    },
+    deliveredTo: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "users"
+    }],
+    readBy: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "users"
+    }]
 }, { timestamps: true });
 
 const MessageModel = mongoose.model("messages", MessageSchema);
