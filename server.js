@@ -56,6 +56,7 @@ io.on("connection", async (socket) => {
 
     onlineUsers.set(userId, socket.id);
 
+    socket.emit("online_users", Array.from(onlineUsers.keys()));
     socket.broadcast.emit("user_online", userId);
 
     console.log({
@@ -118,7 +119,12 @@ io.on("connection", async (socket) => {
                 message
             });
 
+            const messageId = savedMessage._id;
+
             socket.to(roomId).emit("receive_message", savedMessage);
+            io.to(roomId).emit("message_delivered", {
+                messageId: savedMessage._id
+            })
 
         } catch (err) {
             console.log("Error sending message:", err.message);
@@ -126,19 +132,31 @@ io.on("connection", async (socket) => {
         }
     });
 
+    socket.on("read_message", (data) => {
+        const { messageId, roomId } = data;
+        socket.to(roomId).emit("message_read", { messageId, userId });
+    })
+
+    socket.on("message_delivered", (data) => {
+        const { messageId, roomId } = data;
+        socket.to(roomId).emit("message_delivered", { messageId, userId });
+    })
+
     socket.on("typing", async (data) => {
         const { roomId } = data;
 
         const roomExist = await ChatRoomModel.findById(roomId);
 
         if (!roomExist) {
-            throw new Error("ROOM_NOT_FOUND");
+            socket.emit("error_message", "ROOM_NOT_FOUND");
+            return;
         }
 
         if (!roomExist.participants.some(
-            (id) => id.toString() === senderId.toString()
+            (id) => id.toString() === userId.toString()
         )) {
-            throw new Error("NOT_A_PARTICIPANT");
+            socket.emit("error_message", "USER_NOT_FOUND");
+            return;
         }
 
         socket.to(roomId).emit("typing", {
@@ -152,13 +170,15 @@ io.on("connection", async (socket) => {
         const roomExist = await ChatRoomModel.findById(roomId);
 
         if (!roomExist) {
-            throw new Error("ROOM_NOT_FOUND");
+            socket.emit("error_message", "ROOM_NOT_FOUND");
+            return;
         }
 
         if (!roomExist.participants.some(
-            (id) => id.toString() === senderId.toString()
+            (id) => id.toString() === userId.toString()
         )) {
-            throw new Error("NOT_A_PARTICIPANT");
+            socket.emit("error_message", "USER_NOT_FOUND");
+            return;
         }
 
         socket.to(roomId).emit("stop_typing", {
