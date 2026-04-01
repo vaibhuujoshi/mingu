@@ -20,7 +20,7 @@ async function createRoom(creatorId, data) {
 }
 
 async function sendMessage(senderId, roomId, message) {
-    const roomExist = await ChatRoomModel.findById(roomId);
+    const roomExist = await ChatRoomModel.findById(roomId).lean();
 
     if (!roomExist) {
         throw new Error("ROOM_NOT_FOUND");
@@ -42,7 +42,7 @@ async function sendMessage(senderId, roomId, message) {
 }
 
 async function getMessages(senderId, roomId, cursor, limit) {
-    const roomExist = await ChatRoomModel.findById(roomId);
+    const roomExist = await ChatRoomModel.findById(roomId).lean();
 
     if (!roomExist) {
         throw new Error("ROOM_NOT_FOUND");
@@ -62,7 +62,8 @@ async function getMessages(senderId, roomId, cursor, limit) {
 
     const messages = await MessageModel.find(query)
         .sort({ createdAt: -1 })
-        .limit(limit);
+        .limit(limit)
+        .lean();
 
     const nextCursor = messages.length > 0
         ? messages[messages.length - 1].id : null;
@@ -74,7 +75,7 @@ async function getMessages(senderId, roomId, cursor, limit) {
 }
 
 async function getUnreadCount(userId, roomId) {
-    const roomExist = await ChatRoomModel.findById(roomId);
+    const roomExist = await ChatRoomModel.findById(roomId).lean();
 
     if (!roomExist) {
         throw new Error("ROOM_NOT_FOUND");
@@ -97,7 +98,7 @@ async function getUnreadCount(userId, roomId) {
 }
 
 async function lastMessage(userId, roomId) {
-    const roomExist = await ChatRoomModel.findById(roomId);
+    const roomExist = await ChatRoomModel.findById(roomId).lean();
 
     if (!roomExist) {
         throw new Error("ROOM_NOT_FOUND");
@@ -111,7 +112,7 @@ async function lastMessage(userId, roomId) {
 
     const content = await MessageModel.findOne({
         roomId
-    }).sort({ createdAt: -1 })
+    }).sort({ createdAt: -1 }).lean();
 
     return content;
 }
