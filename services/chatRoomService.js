@@ -119,9 +119,58 @@ async function lastMessage(userId, roomId) {
 async function getRooms(userId) {
     const rooms = await ChatRoomModel.find({
         participants: userId
+    }).lean();
+
+    const roomIds = rooms.map(r => r._id);
+
+    const lastMessages = await MessageModel.aggregate([
+        { $match: { roomId: { $in: roomIds } } },
+        { $sort: { createdAt: -1 } },
+        {
+            $group: {
+                _id: "$roomId",
+                lastMessage: { $first: "$$ROOT" }
+            }
+        }
+    ]);
+
+    const unreadCounts = await MessageModel.aggregate([
+        {
+            $match: {
+                roomId: { $in: roomIds },
+                readBy: { $ne: userId },
+                senderId: { $ne: userId }
+            }
+        },
+        {
+            $group: {
+                _id: "$roomId",
+                count: { $sum: 1 }
+            }
+        }
+    ]);
+
+    const lastMsgMap = new Map(
+        lastMessages.map(m => [m._id.toString(), m.lastMessage])
+    );
+
+    const unreadMap = new Map(
+        unreadCounts.map(u => [u._id.toString(), u.count])
+    );
+
+    return rooms.map(room => {
+        const roomId = room._id.toString();
+        const lastMsg = lastMsgMap.get(roomId);
+
+        return {
+            roomId,
+            roomName: room?.roomName || null,
+            lastMessage: lastMsg?.message || null,
+            lastMessageTime: lastMsg?.createdAt || null,
+            unreadCount: unreadMap.get(roomId) || null
+        }
     })
 
-    return rooms;
 }
 
 export { createRoom, sendMessage, getMessages, getRooms, lastMessage, getUnreadCount };
