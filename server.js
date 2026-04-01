@@ -8,8 +8,8 @@ import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
 import ChatRoomModel from "./models/chatRoom.js";
-import MessageModel from "./models/message.js";
-import { sendMessage, lastMessage } from "./services/chatRoomService.js";
+import registerSocketHandler from "./sockets/socketHandler.js";
+import { getRooms } from "./services/chatRoomService.js";
 
 dotenv.config();
 
@@ -55,148 +55,24 @@ io.on("connection", async (socket) => {
     socket.user = decoded;
     const userId = socket.user.id;
 
-    onlineUsers.set(userId, socket.id);
-
-    socket.emit("online_users", Array.from(onlineUsers.keys()));
-    socket.broadcast.emit("user_online", userId);
-
     console.log({
         event: "USER_CONNECTED",
         userId,
         time: new Date().toISOString()
     });
 
-
-    const rooms = await ChatRoomModel.find({
-        participants: userId
-    });
+    const rooms = await getRooms(userId);
 
     rooms.forEach((room) => {
-        socket.join(room._id.toString());
+        socket.join(room.roomId);
     });
 
     socket.emit("ready");
 
     console.log(`User joined ${rooms.length} rooms`);
-    console.log("Rooms Joined: ", rooms.map(r => r._id.toString()));
+    console.log("Rooms Joined: ", rooms.map(r => r.roomId));
 
-    socket.on("sync_messages", async (data) => {
-        try {
-            const { roomId } = data;
-
-            const lastEntry = await lastMessage(userId, roomId);
-
-            socket.emit("sync_messages", lastEntry);
-        } catch (err) {
-            console.log("Error getting message:", err.message);
-            socket.emit("error_message", err.message);
-        }
-    })
-
-    socket.on("send_message", async (data) => {
-        console.log("📨 send_message event received");
-
-        try {
-            const { roomId, message } = data;
-
-            const roomExist = await ChatRoomModel.findById(roomId);
-
-            if (!roomExist) {
-                socket.emit("error_message", "ROOM_NOT_FOUND");
-                return;
-            }
-
-            const savedMessage = await MessageModel.create({
-                senderId: userId,
-                roomId,
-                message,
-                deliveredTo: [userId],
-                readBy: []
-            })
-
-            console.log({
-                event: "SEND_MESSAGE",
-                userId,
-                roomId,
-                message
-            });
-
-            const messageId = savedMessage._id;
-
-            socket.to(roomId).emit("receive_message", savedMessage);
-
-            io.to(roomId).emit("message_delivered", {
-                messageId
-            })
-
-        } catch (err) {
-            console.log("Error sending message:", err.message);
-            socket.emit("error_message", err.message);
-        }
-    });
-
-    socket.on("read_message", async (data) => {
-        const { messageId, roomId } = data;
-
-        try {
-            await MessageModel.findByIdAndUpdate(
-                messageId,
-                { $addToSet: { readBy: userId } }
-            )
-        } catch (err) {
-            console.error("READ ERROR:", err.message);
-        }
-
-        socket.to(roomId).emit("message_read", { messageId, userId });
-    })
-
-    socket.on("message_delivered", async (data) => {
-        const { messageId, roomId } = data;
-
-        try {
-            await MessageModel.findByIdAndUpdate(
-                messageId,
-                { $addToSet: { deliveredTo: userId } }
-            )
-
-        } catch (err) {
-            console.error("DELIVERY ERROR:", err.message);
-        }
-    })
-
-    socket.on("typing", async (data) => {
-        const { roomId } = data;
-
-        if (!roomId) {
-            socket.emit("error_message", "ROOM_NOT_FOUND");
-            return;
-        }
-
-        socket.to(roomId).emit("typing", {
-            userId
-        });
-    });
-
-    socket.on("stop_typing", async (data) => {
-        const { roomId } = data;
-
-        if (!roomId) {
-            socket.emit("error_message", "ROOM_NOT_FOUND");
-            return;
-        }
-
-        socket.to(roomId).emit("stop_typing", {
-            userId
-        });
-    });
-
-    socket.on("disconnect", () => {
-        onlineUsers.delete(userId);
-
-        socket.broadcast.emit("user_offline", userId);
-
-        console.log("User disconnected:", socket.user?.id);
-    });
+    registerSocketHandler(io, socket);
 });
 
 server.listen(3000, () => {
