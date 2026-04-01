@@ -19,7 +19,8 @@ const ChatRoomSchema = new Schema(
       {
         type: Schema.Types.ObjectId,
         ref: "users",
-        required: true
+        required: true,
+        index: true
       }
     ]
   },
