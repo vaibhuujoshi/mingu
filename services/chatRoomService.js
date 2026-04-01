@@ -73,6 +73,29 @@ async function getMessages(senderId, roomId, cursor, limit) {
     };
 }
 
+async function getUnreadCount(userId, roomId) {
+    const roomExist = await ChatRoomModel.findById(roomId);
+
+    if (!roomExist) {
+        throw new Error("ROOM_NOT_FOUND");
+    }
+
+    if (!roomExist.participants.some(
+        (id) => id.toString() === userId.toString()
+    )) {
+        throw new Error("NOT_A_PARTICIPANT");
+    }
+
+    const count = await MessageModel.countDocuments({
+        roomId,
+        senderId: { $ne: userId },
+        readBy: { $ne: userId }
+    })
+
+    return count;
+
+}
+
 async function lastMessage(userId, roomId) {
     const roomExist = await ChatRoomModel.findById(roomId);
 
@@ -101,4 +124,4 @@ async function getRooms(userId) {
     return rooms;
 }
 
-export { createRoom, sendMessage, getMessages, getRooms, lastMessage };
+export { createRoom, sendMessage, getMessages, getRooms, lastMessage, getUnreadCount };
