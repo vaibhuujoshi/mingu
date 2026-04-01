@@ -1,4 +1,4 @@
-import { createRoom, sendMessage, getMessages, getRooms, lastMessage, lastMessage, getUnreadCount } from "../services/chatRoomService.js";
+import { createRoom, sendMessage, getMessages, getRooms, lastMessage, getUnreadCount } from "../services/chatRoomService.js";
 import { objectIdSchema, createRoomSchema, messageSchema } from "../validators/chatRoomValidator.js";
 
 async function createRoomHandler(req, res) {
@@ -102,24 +102,10 @@ async function getMessagesHandler(req, res) {
 async function getRoomsHandler(req, res) {
     try {
         const userId = req.user.id;
+
         const rooms = await getRooms(userId);
 
-        const response = await Promise.all(
-            rooms.map(async (room) => {
-                const roomId = room._id;
-                const lastMsgData = await lastMessage(userId, roomId);
-                const unreadCount = await getUnreadCount(userId, roomId);
-
-                return {
-                    roomId,
-                    roomName: room?.roomName,
-                    lastMessage: lastMsgData?.message || null,
-                    lastMessageTime: lastMsgData?.createdAt,
-                    unreadCount
-                };
-            }));
-
-        res.status(200).json(response);
+        res.status(200).json(rooms);
     } catch (err) {
         if (err.message === "ROOM_NOT_FOUND") {
             return res.status(404).json({
