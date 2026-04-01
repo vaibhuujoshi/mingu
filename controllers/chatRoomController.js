@@ -1,4 +1,4 @@
-import { createRoom, sendMessage, getMessages, getRooms } from "../services/chatRoomService.js";
+import { createRoom, sendMessage, getMessages, getRooms, lastMessage, lastMessage, getUnreadCount } from "../services/chatRoomService.js";
 import { objectIdSchema, createRoomSchema, messageSchema } from "../validators/chatRoomValidator.js";
 
 async function createRoomHandler(req, res) {
@@ -76,9 +76,9 @@ async function getMessagesHandler(req, res) {
         const senderId = req.user.id;
         const roomId = req.params.roomId;
 
-        const {cursor, limit = 20} = req.query;
+        const { cursor, limit = 20 } = req.query;
 
-        const content = await getMessages(senderId, roomId, cursor ,parseInt(limit));
+        const content = await getMessages(senderId, roomId, cursor, parseInt(limit));
 
         res.status(200).json(content);
 
@@ -104,11 +104,36 @@ async function getRoomsHandler(req, res) {
         const userId = req.user.id;
         const rooms = await getRooms(userId);
 
-        res.status(200).json({
-            rooms
-        })
+        const response = await Promise.all(
+            rooms.map(async (room) => {
+                const roomId = room._id;
+                const lastMsgData = await lastMessage(userId, roomId);
+                const unreadCount = await getUnreadCount(userId, roomId);
+
+                return {
+                    roomId,
+                    roomName: room?.roomName,
+                    lastMessage: lastMsgData?.message || null,
+                    lastMessageTime: lastMsgData?.createdAt,
+                    unreadCount
+                };
+            }));
+
+        res.status(200).json(response);
     } catch (err) {
-        
+        if (err.message === "ROOM_NOT_FOUND") {
+            return res.status(404).json({
+                message: "Room not found"
+            })
+        } else if (err.message === "NOT_A_PARTICIPANT") {
+            return res.status(403).json({
+                message: "You are not authorized"
+            })
+        }
+
+        res.status(500).json({
+            message: "There is some error from server side"
+        })
     }
 }
 
