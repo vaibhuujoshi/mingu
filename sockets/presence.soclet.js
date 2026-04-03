@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 const onlineUsers = new Map();
 
 export default function presenceConnection(io, socket) {
