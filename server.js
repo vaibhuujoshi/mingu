@@ -12,6 +12,7 @@ import { getRooms } from "./services/chatRoomService.js";
 import logger from "./utils/logger.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import { apiLimiter } from "./middlewares/rateLimiter.js";
+import { canSendMessage } from "./utils/socketRateLimiter.js";
 
 dotenv.config();
 
@@ -73,6 +74,18 @@ io.on("connection", async (socket) => {
     });
 
     socket.emit("ready");
+
+    socket.on("ready", async (data) => {
+        let spamCount = 0;
+        if (!canSendMessage(userId)) {
+            socket.emit("error_message", "Too many messages. Slow down.");
+
+            if (spamCount > 3) {
+                socket.disconnect();
+                console.log("Too many requests!!");
+            }
+        }
+    });
 
     console.log(`User joined ${rooms.length} rooms`);
     console.log("Rooms Joined: ", rooms.map(r => r.roomId));
