@@ -21,7 +21,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(errorHandler);
-api.use(apiLimiter)
+app.use(apiLimiter)
 
 const MongoDB_URL = process.env.MONGODB_CON;
 
