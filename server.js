@@ -7,9 +7,10 @@ import mongoose from "mongoose";
 import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
-import ChatRoomModel from "./models/chatRoom.js";
 import registerSocketHandler from "./sockets/socketHandler.js";
 import { getRooms } from "./services/chatRoomService.js";
+import logger from "./utils/logger.js";
+import errorHandler from "./middlewares/errorHandler.js";
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(errorHandler);
 
 const MongoDB_URL = process.env.MONGODB_CON;
 
@@ -30,8 +32,6 @@ app.use("/api/chat", roomRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server);
-
-const onlineUsers = new Map();
 
 io.on("connection", async (socket) => {
     const token = socket.handshake.auth?.token;
@@ -47,7 +47,10 @@ io.on("connection", async (socket) => {
     try {
         decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
-        console.log("Invalid Token");
+        logger.error({
+            event: "INVALID_TOKEN",
+            error: err.message
+        });
         socket.disconnect();
         return;
     }
@@ -55,7 +58,7 @@ io.on("connection", async (socket) => {
     socket.user = decoded;
     const userId = socket.user.id;
 
-    console.log({
+    logger.info({
         event: "USER_CONNECTED",
         userId,
         time: new Date().toISOString()

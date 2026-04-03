@@ -1,6 +1,7 @@
 import MessageModel from "../models/message.js";
 import { lastMessage } from "../services/chatRoomService.js";
 import ChatRoomModel from "../models/chatRoom.js";
+import logger from "../utils/logger.js";
 
 export default function messageConnection(io, socket) {
     const userId = socket.user.id;
@@ -13,7 +14,12 @@ export default function messageConnection(io, socket) {
 
             socket.emit("sync_messages", lastEntry);
         } catch (err) {
-            console.log("Error getting message:", err.message);
+            logger.error({
+                event: "SYNC_MESSAGE_FAILED",
+                userId,
+                roomId,
+                error: err.message
+            });
             socket.emit("error_message", err.message);
         }
     })
@@ -39,7 +45,7 @@ export default function messageConnection(io, socket) {
                 readBy: []
             })
 
-            console.log({
+            logger.info({
                 event: "SEND_MESSAGE",
                 userId,
                 roomId,
@@ -55,7 +61,12 @@ export default function messageConnection(io, socket) {
             })
 
         } catch (err) {
-            console.log("Error sending message:", err.message);
+            logger.error({
+                event: "SEND_MESSAGE_FAILED",
+                userId,
+                roomId,
+                error: err.message
+            });
             socket.emit("error_message", err.message);
         }
     });
@@ -69,7 +80,12 @@ export default function messageConnection(io, socket) {
                 { $addToSet: { readBy: userId } }
             )
         } catch (err) {
-            console.error("READ ERROR:", err.message);
+            logger.error({
+                event: "READ_MESSAGE_FAILED",
+                userId,
+                roomId,
+                error: err.message
+            });
         }
 
         socket.to(roomId).emit("message_read", { messageId, userId });
@@ -85,7 +101,12 @@ export default function messageConnection(io, socket) {
             )
 
         } catch (err) {
-            console.error("DELIVERY ERROR:", err.message);
+            logger.error({
+                event: "DELIVERY_MESSAGE_FAILED",
+                userId,
+                roomId,
+                error: err.message
+            });
         }
     })
 }

@@ -11,6 +11,10 @@ export default function presenceConnection(io, socket) {
     socket.on("disconnect", () => {
         onlineUsers.delete(userId);
         socket.broadcast.emit("user_offline", userId);
-        console.log("User disconnected:", socket.user?.id);
+        logger.info({
+            event: "USER_DISCONNECTED",
+            userId,
+            time: new Date().toISOString()
+        });
     });
 }
