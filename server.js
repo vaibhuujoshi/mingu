@@ -11,6 +11,7 @@ import registerSocketHandler from "./sockets/socketHandler.js";
 import { getRooms } from "./services/chatRoomService.js";
 import logger from "./utils/logger.js";
 import errorHandler from "./middlewares/errorHandler.js";
+import { apiLimiter } from "./middlewares/rateLimiter.js";
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(errorHandler);
+api.use(apiLimiter)
 
 const MongoDB_URL = process.env.MONGODB_CON;
 
