@@ -1,2 +1,5 @@
 node_modules
 .env
+testSocket1.js
+testSocket2.js
+logs
