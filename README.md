@@ -1,4 +1,4 @@
-# Mingu
+#  <img height="45px" src="https://pbs.twimg.com/media/HFKPRyiaEAAzMaq?format=jpg&name=small" /> Mingu
 
 Mingu is a real-time chat application backend built with Node.js, Express, and Socket.IO. It provides a robust foundation for building feature-rich chat services, including user authentication, room management, real-time messaging, and presence indicators.
 
