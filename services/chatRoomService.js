@@ -6,7 +6,7 @@ async function createRoom(creatorId, data) {
     const { roomName, participants } = data;
     let finalParticipants = [...new Set([creatorId, ...participants])];
 
-    if (participants.length < 2) {
+    if (finalParticipants.length < 2) {
         throw new Error("MIN_2_PARTICIPANTS_REQUIRED")
     }
 
