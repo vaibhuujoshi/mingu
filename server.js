@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import userRoutes from "./routes/userRoutes.js";
 import roomRoutes from "./routes/chatRoomRoutes.js"
-import mongoose from "mongoose";
 import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
@@ -13,6 +12,7 @@ import logger from "./utils/logger.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import { apiLimiter } from "./middlewares/rateLimiter.js";
 import { canSendMessage } from "./utils/socketRateLimiter.js";
+import connectDB from "./config/db.js";
 
 dotenv.config();
 
@@ -23,12 +23,7 @@ app.use(cookieParser());
 app.use(errorHandler);
 app.use(apiLimiter)
 
-const MongoDB_URL = process.env.MONGODB_CON;
-
-mongoose.connect(MongoDB_URL)
-    .then(() => {
-        console.log("MongoDB connected");
-    });
+connectDB();
 
 app.use("/api/user", userRoutes);
 app.use("/api/chat", roomRoutes);
