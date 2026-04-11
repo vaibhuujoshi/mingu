@@ -12,7 +12,7 @@ import logger from "./utils/logger.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import { apiLimiter } from "./middlewares/rateLimiter.js";
 import { canSendMessage } from "./utils/socketRateLimiter.js";
-import connectDB from "./config/db.js";
+import { connectDB } from "./config/db.js";
 
 dotenv.config();
 
