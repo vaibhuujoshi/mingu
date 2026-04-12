@@ -13,6 +13,8 @@ import errorHandler from "./middlewares/errorHandler.js";
 import { apiLimiter } from "./middlewares/rateLimiter.js";
 import { canSendMessage } from "./utils/socketRateLimiter.js";
 import { connectDB } from "./config/db.js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import {pubClient, subClient} from "./config/redis.js"
 
 dotenv.config();
 
@@ -29,7 +31,13 @@ app.use("/api/user", userRoutes);
 app.use("/api/chat", roomRoutes);
 
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "*"
+    }
+});
+
+io.adapter(createAdapter(pubClient, subClient));
 
 io.on("connection", async (socket) => {
     const token = socket.handshake.auth?.token;
