@@ -2,9 +2,12 @@ import MessageModel from "../models/message.js";
 import { lastMessage } from "../services/chatRoomService.js";
 import ChatRoomModel from "../models/chatRoom.js";
 import logger from "../utils/logger.js";
+import { pubClient } from "../config/redis.js";
 
-export default function messageConnection(io, socket) {
+export async function messageConnection(io, socket) {
     const userId = socket.user.id;
+
+    const socketId = await pubClient.get(`user:${userId}`);
 
     socket.on("sync_messages", async (data) => {
         try {
@@ -54,9 +57,9 @@ export default function messageConnection(io, socket) {
 
             const messageId = savedMessage._id;
 
-            socket.to(roomId).emit("receive_message", savedMessage);
+            socket.to(socketId).emit("receive_message", savedMessage);
 
-            io.to(roomId).emit("message_delivered", {
+            io.to(socketId).emit("message_delivered", {
                 messageId
             })
 
@@ -88,7 +91,7 @@ export default function messageConnection(io, socket) {
             });
         }
 
-        socket.to(roomId).emit("message_read", { messageId, userId });
+        socket.to(socketId).emit("message_read", { messageId, userId });
     })
 
     socket.on("message_delivered", async (data) => {

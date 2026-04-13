@@ -1,4 +1,4 @@
-import messageConnection from "./message.socket.js";
+import { messageConnection } from "./message.socket.js";
 import typingConnection from "./typing.socket.js";
 import presenceConnection from "./presence.socket.js";
 
